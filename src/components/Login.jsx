@@ -91,6 +91,17 @@ const api = {
   }
 };
 
+// Function to fetch user profile
+const fetchUserProfile = async (dssn) => {
+  try {
+    const response = await api.get(`/profile-by-dssn?dssn=${dssn}`);
+    return response;
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw new Error('Failed to fetch user profile');
+  }
+};
+
 function Login({ onLoginSuccess, onBack }) {
   const [dssn, setDssn] = useState("");
   const [error, setError] = useState("");
@@ -184,13 +195,31 @@ function Login({ onLoginSuccess, onBack }) {
             setPolling(false);
             console.log('Login approved with token:', statusResponse.govToken);
             
-            // Call the success callback with user data
-            onLoginSuccess({
-              dssn: dssn,
-              govToken: statusResponse.govToken,
-              challengeId: response.challengeId,
-              timestamp: new Date().toISOString()
-            });
+            // Fetch user profile after successful login
+            try {
+              const userProfile = await fetchUserProfile(dssn);
+              console.log('User profile fetched:', userProfile);
+              
+              // Call the success callback with complete user data
+              onLoginSuccess({
+                dssn: dssn,
+                govToken: statusResponse.govToken,
+                challengeId: response.challengeId,
+                profile: userProfile,
+                timestamp: new Date().toISOString()
+              });
+              
+            } catch (profileError) {
+              console.error('Error fetching profile, proceeding with basic user data:', profileError);
+              // Still proceed with login even if profile fetch fails
+              onLoginSuccess({
+                dssn: dssn,
+                govToken: statusResponse.govToken,
+                challengeId: response.challengeId,
+                profile: null,
+                timestamp: new Date().toISOString()
+              });
+            }
             
           } else if (statusResponse.status === 'denied') {
             clearInterval(interval);
