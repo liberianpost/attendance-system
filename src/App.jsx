@@ -224,7 +224,8 @@ function Home() {
         <Login 
           onLoginSuccess={(userData) => {
             setShowLogin(false)
-            // In real app, this would set the user in context
+            // CRITICAL FIX: Set the user state to trigger Dashboard navigation
+            setUser(userData)
             console.log('User logged in:', userData)
           }}
           onBack={() => setShowLogin(false)}
