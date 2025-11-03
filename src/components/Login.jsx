@@ -91,14 +91,21 @@ const api = {
   }
 };
 
-// Function to fetch user profile
+// Function to fetch user profile - UPDATED to handle backend response structure
 const fetchUserProfile = async (dssn) => {
   try {
     const response = await api.get(`/profile-by-dssn?dssn=${dssn}`);
-    return response;
+    
+    // Check if the response is successful and has data
+    if (response.success && response.data) {
+      console.log('User profile fetched successfully:', response.data);
+      return response.data; // Return the data object directly
+    } else {
+      throw new Error(response.message || 'Failed to fetch user profile');
+    }
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    throw new Error('Failed to fetch user profile');
+    throw new Error('Failed to fetch user profile: ' + error.message);
   }
 };
 
@@ -195,17 +202,30 @@ function Login({ onLoginSuccess, onBack }) {
             setPolling(false);
             console.log('Login approved with token:', statusResponse.govToken);
             
-            // Fetch user profile after successful login
+            // Fetch user profile after successful login - UPDATED
             try {
               const userProfile = await fetchUserProfile(dssn);
-              console.log('User profile fetched:', userProfile);
+              console.log('User profile fetched successfully:', userProfile);
               
-              // Call the success callback with complete user data
+              // Call the success callback with complete user data - UPDATED structure
               onLoginSuccess({
                 dssn: dssn,
                 govToken: statusResponse.govToken,
                 challengeId: response.challengeId,
-                profile: userProfile,
+                profile: {
+                  // Map backend fields to frontend expected structure
+                  firstName: userProfile.first_name,
+                  lastName: userProfile.last_name,
+                  email: userProfile.email,
+                  phone: userProfile.phone,
+                  photo: userProfile.image,
+                  address: userProfile.address,
+                  postalAddress: userProfile.postal_address,
+                  userId: userProfile.user_id,
+                  dssn: userProfile.DSSN,
+                  // Include all original data for debugging
+                  rawData: userProfile
+                },
                 timestamp: new Date().toISOString()
               });
               
