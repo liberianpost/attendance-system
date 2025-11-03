@@ -15,7 +15,8 @@ export const useAuth = () => {
     return { 
       user: null, 
       loading: false, 
-      logout: () => {} 
+      logout: () => {},
+      setUser: () => {}
     }
   }
   return context
@@ -27,7 +28,9 @@ function Home() {
   const [showAttendanceForm, setShowAttendanceForm] = useState(false)
   const [activeFeature, setActiveFeature] = useState(null)
   const [scrolled, setScrolled] = useState(false)
-  const { user } = useAuth()
+  
+  // FIX: Get both user and setUser from useAuth hook
+  const { user, setUser } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -112,7 +115,7 @@ function Home() {
 
   // If user is logged in, show Dashboard instead of Home
   if (user) {
-    return <Dashboard user={user} onLogout={() => {}} />
+    return <Dashboard user={user} onLogout={() => setUser(null)} />
   }
 
   return (
@@ -224,9 +227,9 @@ function Home() {
         <Login 
           onLoginSuccess={(userData) => {
             setShowLogin(false)
-            // CRITICAL FIX: Set the user state to trigger Dashboard navigation
+            // FIX: Use setUser from AuthContext to update the global user state
             setUser(userData)
-            console.log('User logged in:', userData)
+            console.log('User logged in, navigation should occur:', userData)
           }}
           onBack={() => setShowLogin(false)}
         />
@@ -247,8 +250,10 @@ function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // FIX: Include setUser in the auth context value
   const authValue = {
     user,
+    setUser, // Make setUser available to all components
     loading,
     logout: () => setUser(null)
   }
