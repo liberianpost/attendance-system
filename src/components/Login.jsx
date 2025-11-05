@@ -91,6 +91,23 @@ const api = {
   }
 };
 
+// NEW: Function to check if user has role-based access
+const checkRoleBaseAccess = async (dssn) => {
+  try {
+    const response = await api.post('/check-role-access', { dssn });
+    
+    if (response.success && response.data) {
+      console.log('Role-based access verified:', response.data);
+      return response.data;
+    } else {
+      throw new Error(response.error || 'Access denied. No role-based permissions found.');
+    }
+  } catch (error) {
+    console.error('Error checking role access:', error);
+    throw new Error('Failed to verify access permissions: ' + error.message);
+  }
+};
+
 // Function to fetch user profile - UPDATED to handle backend response structure
 const fetchUserProfile = async (dssn) => {
   try {
@@ -136,8 +153,9 @@ function Login({ onLoginSuccess, onBack }) {
         fcmToken,
         requestData: {
           timestamp: new Date().toISOString(),
-          service: "Digital Liberia Attendance System",
-          origin: window.location.origin
+          service: "Digital Liberia Attendance System - Admin Access",
+          origin: window.location.origin,
+          requiresRoleBase: true
         }
       });
       
@@ -180,6 +198,16 @@ function Login({ onLoginSuccess, onBack }) {
     }
 
     try {
+      // NEW: First check if user has role-based access before proceeding
+      console.log('Checking role-based access for DSSN:', dssn);
+      const roleAccess = await checkRoleBaseAccess(dssn);
+      
+      if (!roleAccess.hasAccess) {
+        throw new Error('Access denied. You do not have role-based permissions for this system.');
+      }
+
+      console.log('Role access verified, proceeding with DSSN challenge...');
+      
       const response = await requestDSSNChallenge(dssn);
       setChallengeId(response.challengeId);
       setPolling(true);
@@ -223,9 +251,13 @@ function Login({ onLoginSuccess, onBack }) {
                   postalAddress: userProfile.postal_address,
                   userId: userProfile.user_id,
                   dssn: userProfile.DSSN,
+                  institution_of_work: userProfile.institution_of_work,
+                  position: userProfile.position,
+                  role_base: userProfile.role_base,
                   // Include all original data for debugging
                   rawData: userProfile
                 },
+                roleAccess: roleAccess, // NEW: Include role access information
                 timestamp: new Date().toISOString()
               });
               
@@ -237,6 +269,7 @@ function Login({ onLoginSuccess, onBack }) {
                 govToken: statusResponse.govToken,
                 challengeId: response.challengeId,
                 profile: null,
+                roleAccess: roleAccess, // NEW: Include role access information
                 timestamp: new Date().toISOString()
               });
             }
@@ -293,13 +326,24 @@ function Login({ onLoginSuccess, onBack }) {
         </button>
 
         <div className="login-header" style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div className="login-logo" style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏢</div>
+          <div className="login-logo" style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔐</div>
           <h2 style={{ color: 'var(--text-dark)', marginBottom: '0.5rem', fontSize: '1.5rem' }}>
-            Secure DSSN Verification
+            Admin Access Verification
           </h2>
           <p style={{ color: 'var(--text-light)' }}>
             Enter your DSSN to access Digital Liberia Attendance System
           </p>
+          <div style={{
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '8px',
+            padding: '0.75rem',
+            marginTop: '1rem',
+            fontSize: '0.875rem',
+            color: 'var(--info-color)'
+          }}>
+            🔒 Role-based access required. Only authorized administrators can login.
+          </div>
         </div>
         
         <div className="login-form">
@@ -345,10 +389,10 @@ function Login({ onLoginSuccess, onBack }) {
                 margin: '0 auto 1rem'
               }}></div>
               <h3 style={{ margin: '1rem 0', color: 'var(--text-dark)' }}>
-                Waiting for Mobile Approval
+                Verifying Admin Access
               </h3>
               <p style={{ color: 'var(--text-light)', marginBottom: '1rem' }}>
-                Please check your mobile app to approve this verification request.
+                Please check your mobile app to approve this admin access request.
               </p>
               {pushNotificationStatus?.sent && (
                 <p className="notification-sent" style={{
@@ -447,9 +491,9 @@ function Login({ onLoginSuccess, onBack }) {
                       borderRadius: '50%',
                       animation: 'spin 1s linear infinite'
                     }}></span>
-                    Verifying...
+                    Verifying Access...
                   </>
-                ) : 'Verify with DSSN'}
+                ) : 'Verify Admin Access'}
               </button>
             </form>
           )}
@@ -467,6 +511,16 @@ function Login({ onLoginSuccess, onBack }) {
               >
                 Download it here
               </a>
+            </p>
+            <p className="access-info" style={{ 
+              color: 'var(--text-light)', 
+              fontSize: '0.75rem',
+              marginTop: '1rem',
+              background: 'rgba(0,0,0,0.05)',
+              padding: '0.5rem',
+              borderRadius: '4px'
+            }}>
+              🔐 This system requires role-based administrator permissions.
             </p>
           </div>
         </div>
