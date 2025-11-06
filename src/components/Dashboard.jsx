@@ -58,12 +58,15 @@ const Dashboard = ({ user, onLogout }) => {
     const fetchInstitutionStats = async () => {
         try {
             setLoading(true);
+            // This endpoint is GET but requires DSSN in body for middleware
+            // We need to use POST for authentication middleware
             const response = await api.post('/institution-stats', {
                 dssn: user.dssn
             });
             
             if (response.success) {
                 setInstitutionStats(response.stats);
+                // Use recentRecords from the institution-stats response
                 setRecentRecords(response.recentRecords || []);
             } else {
                 setError('Failed to load institution stats');
@@ -78,9 +81,9 @@ const Dashboard = ({ user, onLogout }) => {
 
     const fetchRecentRecords = async () => {
         try {
+            // This endpoint is POST and requires DSSN in body
             const response = await api.post('/recent-attendance', {
-                dssn: user.dssn,
-                institution: user.profile?.institution_of_work
+                dssn: user.dssn
             });
             
             if (response.success) {
