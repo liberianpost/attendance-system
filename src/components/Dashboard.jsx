@@ -228,26 +228,22 @@ const Dashboard = ({ user, onLogout }) => {
             color: 'white',
             border: '1px solid rgba(255, 255, 255, 0.3)'
         },
+        // Updated modal styles for QR scanner
         modalOverlay: {
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0, 0, 0, 0.7)',
+            background: 'rgba(0, 0, 0, 0.8)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000
         },
+        // Empty modal content since QR scanner has its own styling
         modalContent: {
-            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-            padding: '2rem',
-            borderRadius: '20px',
-            maxWidth: '500px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto'
+            // Empty - QR scanner handles its own styling
         }
     };
 
@@ -507,23 +503,27 @@ const Dashboard = ({ user, onLogout }) => {
                 </div>
             </main>
 
-            {/* QR Scanner Modal */}
+            {/* QR Scanner Modal - The QR scanner handles its own styling */}
             {showQRScanner && (
-                <div style={styles.modalOverlay} onClick={() => setShowQRScanner(false)}>
-                    <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-                        <QRCodeScanner 
-                            onScan={handleQRScan}
-                            onClose={() => setShowQRScanner(false)}
-                            institution={user.profile?.institution_of_work || 'DIGITAL LIBERIA'}
-                        />
-                    </div>
-                </div>
+                <QRCodeScanner 
+                    onScan={handleQRScan}
+                    onClose={() => setShowQRScanner(false)}
+                    institution={user.profile?.institution_of_work || 'DIGITAL LIBERIA'}
+                />
             )}
 
             {/* Scanned Employee Modal */}
             {scannedEmployee && (
                 <div style={styles.modalOverlay}>
-                    <div style={styles.modalContent}>
+                    <div style={{
+                        background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                        padding: '2rem',
+                        borderRadius: '20px',
+                        maxWidth: '500px',
+                        width: '90%',
+                        maxHeight: '90vh',
+                        overflow: 'auto'
+                    }}>
                         <h3 style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'white' }}>
                             Employee Verified ✅
                         </h3>
