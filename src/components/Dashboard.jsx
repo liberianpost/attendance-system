@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import QRCodeScanner from './QRCodeScanner.jsx';
+import QRCodeScanner from './QRScanner.jsx';
 
 // Add API configuration at the top (same as in Login)
 const API_BASE = 'https://libpayapp.liberianpost.com:8081';
@@ -240,6 +240,14 @@ const Dashboard = ({ user, onLogout }) => {
     if (loading) {
         return (
             <div style={styles.app}>
+                <style>
+                    {`
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                    `}
+                </style>
                 <div style={{ 
                     display: 'flex', 
                     justifyContent: 'center', 
@@ -279,7 +287,7 @@ const Dashboard = ({ user, onLogout }) => {
                     <h2>Error Loading Dashboard</h2>
                     <p>{error}</p>
                     <button 
-                        style={styles.btn} 
+                        style={{...styles.btn, ...styles.btnPrimary}} 
                         onClick={() => window.location.reload()}
                     >
                         Retry
@@ -375,19 +383,23 @@ const Dashboard = ({ user, onLogout }) => {
                         </p>
                         
                         <button 
-                            style={{...styles.btn, ...styles.btnPrimary}}
                             onClick={startAttendanceProcess}
                             disabled={activeSession}
                             style={{ 
-                                ...styles.btn,
-                                ...styles.btnPrimary,
                                 padding: '1.2rem 3rem',
                                 fontSize: '1.2rem',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.8rem',
                                 margin: '0 auto',
-                                opacity: activeSession ? 0.7 : 1
+                                opacity: activeSession ? 0.7 : 1,
+                                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                fontWeight: '600',
+                                cursor: activeSession ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.3s ease'
                             }}
                         >
                             {activeSession ? '🔄 Session Active' : '🚀 Start Attendance'}
