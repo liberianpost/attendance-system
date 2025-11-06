@@ -1,22 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import QRCodeScanner from './QRCodeScanner.jsx';
 
+// Add API configuration at the top (same as in Login)
+const API_BASE = 'https://libpayapp.liberianpost.com:8081';
+
+const api = {
+  post: async (url, data) => {
+    const response = await fetch(`${API_BASE}${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+    
+    return response.json();
+  },
+  
+  get: async (url) => {
+    const response = await fetch(`${API_BASE}${url}`, {
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+    
+    return response.json();
+  }
+};
+
 const Dashboard = ({ user, onLogout }) => {
     const [activeSession, setActiveSession] = useState(null);
     const [institutionStats, setInstitutionStats] = useState(null);
     const [showQRScanner, setShowQRScanner] = useState(false);
     const [scannedEmployee, setScannedEmployee] = useState(null);
     const [recentRecords, setRecentRecords] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (user && user.profile) {
+        console.log('Dashboard mounted with user:', user);
+        if (user && user.dssn) {
             fetchInstitutionStats();
             fetchRecentRecords();
+        } else {
+            setError('No user data available');
+            setLoading(false);
         }
     }, [user]);
 
     const fetchInstitutionStats = async () => {
         try {
+            setLoading(true);
             const response = await api.post('/institution-stats', {
                 dssn: user.dssn
             });
@@ -24,9 +65,29 @@ const Dashboard = ({ user, onLogout }) => {
             if (response.success) {
                 setInstitutionStats(response.stats);
                 setRecentRecords(response.recentRecords || []);
+            } else {
+                setError('Failed to load institution stats');
             }
         } catch (error) {
             console.error('Error fetching institution stats:', error);
+            setError('Error loading dashboard data: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchRecentRecords = async () => {
+        try {
+            const response = await api.post('/recent-attendance', {
+                dssn: user.dssn,
+                institution: user.profile?.institution_of_work
+            });
+            
+            if (response.success) {
+                setRecentRecords(response.records || []);
+            }
+        } catch (error) {
+            console.error('Error fetching recent records:', error);
         }
     };
 
@@ -34,12 +95,14 @@ const Dashboard = ({ user, onLogout }) => {
         try {
             const response = await api.post('/start-attendance', {
                 dssn: user.dssn,
-                institution: user.profile.institution_of_work
+                institution: user.profile?.institution_of_work
             });
 
             if (response.success) {
                 setActiveSession(response.sessionToken);
                 setShowQRScanner(true);
+            } else {
+                alert('Failed to start attendance: ' + response.error);
             }
         } catch (error) {
             console.error('Error starting attendance:', error);
@@ -57,7 +120,10 @@ const Dashboard = ({ user, onLogout }) => {
 
             if (response.success) {
                 setScannedEmployee(response.employee);
-                // Employee details will be displayed and push notification sent
+                // Refresh data after successful scan
+                fetchInstitutionStats();
+            } else {
+                alert('Scan failed: ' + response.error);
             }
         } catch (error) {
             console.error('Error processing QR scan:', error);
@@ -102,12 +168,133 @@ const Dashboard = ({ user, onLogout }) => {
         </div>
     );
 
+    // Add basic CSS styles if not available
+    const styles = {
+        app: {
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white'
+        },
+        header: {
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+            padding: '1rem 0'
+        },
+        headerContent: {
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 2rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+        },
+        logo: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontSize: '1.5rem',
+            fontWeight: 'bold'
+        },
+        btn: {
+            padding: '0.8rem 1.5rem',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '0.95rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease'
+        },
+        btnPrimary: {
+            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+            color: 'white'
+        },
+        btnSecondary: {
+            background: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            border: '1px solid rgba(255, 255, 255, 0.3)'
+        },
+        modalOverlay: {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+        },
+        modalContent: {
+            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+            padding: '2rem',
+            borderRadius: '20px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+        }
+    };
+
+    if (loading) {
+        return (
+            <div style={styles.app}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    height: '100vh',
+                    flexDirection: 'column',
+                    gap: '1rem'
+                }}>
+                    <div style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid rgba(255,255,255,0.3)',
+                        borderTop: '4px solid white',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                    }}></div>
+                    <p>Loading Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div style={styles.app}>
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    height: '100vh',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    textAlign: 'center',
+                    padding: '2rem'
+                }}>
+                    <div style={{ fontSize: '3rem' }}>⚠️</div>
+                    <h2>Error Loading Dashboard</h2>
+                    <p>{error}</p>
+                    <button 
+                        style={styles.btn} 
+                        onClick={() => window.location.reload()}
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="app">
-            <header className="header">
-                <div className="header-content">
-                    <div className="logo">
-                        <span className="logo-icon">🏢</span>
+        <div style={styles.app}>
+            <header style={styles.header}>
+                <div style={styles.headerContent}>
+                    <div style={styles.logo}>
+                        <span>🏢</span>
                         <span>Digital Liberia Attendance</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -134,11 +321,11 @@ const Dashboard = ({ user, onLogout }) => {
                             )}
                             <div>
                                 <div style={{ 
-                                    color: 'var(--white)', 
+                                    color: 'white', 
                                     fontWeight: '600',
                                     fontSize: '0.9rem'
                                 }}>
-                                    {user.profile?.first_name} {user.profile?.last_name}
+                                    {user.profile?.first_name || user.profile?.firstName} {user.profile?.last_name || user.profile?.lastName}
                                 </div>
                                 <div style={{ 
                                     color: 'rgba(255, 255, 255, 0.7)', 
@@ -150,9 +337,8 @@ const Dashboard = ({ user, onLogout }) => {
                             </div>
                         </div>
                         <button 
-                            className="btn btn-secondary"
+                            style={{...styles.btn, ...styles.btnSecondary}}
                             onClick={onLogout}
-                            style={{ padding: '0.8rem 1.5rem', fontSize: '0.95rem' }}
                         >
                             🚪 Logout
                         </button>
@@ -160,8 +346,8 @@ const Dashboard = ({ user, onLogout }) => {
                 </div>
             </header>
 
-            <main className="main-content">
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', width: '100%' }}>
+            <main style={{ padding: '2rem 0' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem', width: '100%' }}>
                     {/* Welcome Section */}
                     <div style={{ 
                         background: 'rgba(255, 255, 255, 0.08)',
@@ -174,11 +360,11 @@ const Dashboard = ({ user, onLogout }) => {
                     }}>
                         <h1 style={{ 
                             fontSize: '2.5rem', 
-                            color: 'var(--white)', 
+                            color: 'white', 
                             marginBottom: '1rem',
                             fontWeight: '900'
                         }}>
-                            Welcome, {user.profile?.first_name}!
+                            Welcome, {user.profile?.first_name || user.profile?.firstName || 'User'}!
                         </h1>
                         <p style={{ 
                             color: 'rgba(255,255,255,0.9)', 
@@ -189,10 +375,12 @@ const Dashboard = ({ user, onLogout }) => {
                         </p>
                         
                         <button 
-                            className="btn btn-primary"
+                            style={{...styles.btn, ...styles.btnPrimary}}
                             onClick={startAttendanceProcess}
                             disabled={activeSession}
                             style={{ 
+                                ...styles.btn,
+                                ...styles.btnPrimary,
                                 padding: '1.2rem 3rem',
                                 fontSize: '1.2rem',
                                 display: 'flex',
@@ -240,7 +428,7 @@ const Dashboard = ({ user, onLogout }) => {
                         padding: '2rem'
                     }}>
                         <h3 style={{ 
-                            color: 'var(--white)', 
+                            color: 'white', 
                             marginBottom: '1.5rem',
                             fontSize: '1.5rem'
                         }}>
@@ -248,8 +436,8 @@ const Dashboard = ({ user, onLogout }) => {
                         </h3>
                         {recentRecords.length > 0 ? (
                             <div>
-                                {recentRecords.map(record => (
-                                    <div key={record.id} style={{
+                                {recentRecords.map((record, index) => (
+                                    <div key={record.id || index} style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '1rem',
@@ -262,7 +450,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             {record.attendance_type === 'check_in' ? '✅' : '🚪'}
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ color: 'var(--white)', fontWeight: '600' }}>
+                                            <div style={{ color: 'white', fontWeight: '600' }}>
                                                 {record.first_name} {record.last_name}
                                             </div>
                                             <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
@@ -279,7 +467,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             fontSize: '0.8rem',
                                             fontWeight: '600'
                                         }}>
-                                            {record.status}
+                                            {record.status || 'pending'}
                                         </div>
                                     </div>
                                 ))}
@@ -295,8 +483,8 @@ const Dashboard = ({ user, onLogout }) => {
 
             {/* QR Scanner Modal */}
             {showQRScanner && (
-                <div className="modal-overlay" onClick={() => setShowQRScanner(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div style={styles.modalOverlay} onClick={() => setShowQRScanner(false)}>
+                    <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
                         <QRCodeScanner 
                             onScan={handleQRScan}
                             onClose={() => setShowQRScanner(false)}
@@ -308,9 +496,9 @@ const Dashboard = ({ user, onLogout }) => {
 
             {/* Scanned Employee Modal */}
             {scannedEmployee && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalContent}>
+                        <h3 style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'white' }}>
                             Employee Verified ✅
                         </h3>
                         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -327,7 +515,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     }}
                                 />
                             )}
-                            <h4 style={{ color: 'var(--white)', marginBottom: '0.5rem' }}>
+                            <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>
                                 {scannedEmployee.firstName} {scannedEmployee.lastName}
                             </h4>
                             <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
@@ -350,9 +538,8 @@ const Dashboard = ({ user, onLogout }) => {
                             </p>
                         </div>
                         <button 
-                            className="btn btn-primary"
+                            style={{...styles.btn, ...styles.btnPrimary, width: '100%'}}
                             onClick={handleScanComplete}
-                            style={{ width: '100%' }}
                         >
                             Continue Scanning
                         </button>
