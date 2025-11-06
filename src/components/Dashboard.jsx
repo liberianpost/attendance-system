@@ -45,7 +45,14 @@ const Dashboard = ({ user, onLogout }) => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        console.log('Dashboard mounted with user:', user);
+        console.log('=== USER OBJECT DEBUG ===');
+        console.log('Full user object:', user);
+        console.log('User profile:', user?.profile);
+        console.log('Profile keys:', user?.profile ? Object.keys(user.profile) : 'No profile');
+        console.log('Institution:', user?.profile?.institution_of_work);
+        console.log('Position:', user?.profile?.position);
+        console.log('=== END DEBUG ===');
+        
         if (user && user.dssn) {
             fetchInstitutionStats();
             fetchRecentRecords();
@@ -58,15 +65,12 @@ const Dashboard = ({ user, onLogout }) => {
     const fetchInstitutionStats = async () => {
         try {
             setLoading(true);
-            // This endpoint is GET but requires DSSN in body for middleware
-            // We need to use POST for authentication middleware
             const response = await api.post('/institution-stats', {
                 dssn: user.dssn
             });
             
             if (response.success) {
                 setInstitutionStats(response.stats);
-                // Use recentRecords from the institution-stats response
                 setRecentRecords(response.recentRecords || []);
             } else {
                 setError('Failed to load institution stats');
@@ -81,7 +85,6 @@ const Dashboard = ({ user, onLogout }) => {
 
     const fetchRecentRecords = async () => {
         try {
-            // This endpoint is POST and requires DSSN in body
             const response = await api.post('/recent-attendance', {
                 dssn: user.dssn
             });
@@ -96,9 +99,17 @@ const Dashboard = ({ user, onLogout }) => {
 
     const startAttendanceProcess = async () => {
         try {
+            console.log('=== START ATTENDANCE DEBUG ===');
+            console.log('User profile institution:', user.profile?.institution_of_work);
+            console.log('User profile position:', user.profile?.position);
+            console.log('=== END DEBUG ===');
+            
+            // Use the institution from profile or fallback to known value
+            const institution = user.profile?.institution_of_work || 'DIGITAL LIBERIA';
+            
             const response = await api.post('/start-attendance', {
                 dssn: user.dssn,
-                institution: user.profile?.institution_of_work
+                institution: institution
             });
 
             if (response.success) {
@@ -343,7 +354,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     fontSize: '0.8rem',
                                     fontWeight: '500'
                                 }}>
-                                    {user.profile?.institution_of_work} • {user.profile?.position}
+                                    {user.profile?.institution_of_work || 'DIGITAL LIBERIA'} • {user.profile?.position || 'CEO'}
                                 </div>
                             </div>
                         </div>
@@ -382,7 +393,7 @@ const Dashboard = ({ user, onLogout }) => {
                             fontSize: '1.2rem',
                             marginBottom: '2rem'
                         }}>
-                            Managing attendance for {user.profile?.institution_of_work}
+                            Managing attendance for {user.profile?.institution_of_work || 'DIGITAL LIBERIA'}
                         </p>
                         
                         <button 
@@ -503,7 +514,7 @@ const Dashboard = ({ user, onLogout }) => {
                         <QRCodeScanner 
                             onScan={handleQRScan}
                             onClose={() => setShowQRScanner(false)}
-                            institution={user.profile?.institution_of_work}
+                            institution={user.profile?.institution_of_work || 'DIGITAL LIBERIA'}
                         />
                     </div>
                 </div>
